@@ -188,6 +188,7 @@ export interface CompletedSubTaskCheckpointStatistics {
   start_delay: number;
   unaligned_checkpoint: boolean;
   aborted: boolean;
+  ip: string | null;
 }
 
 export interface PendingSubTaskCheckpointStatistics {}

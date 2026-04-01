@@ -111,6 +111,8 @@ public class SubtaskCheckpointStatistics {
 
         public static final String FIELD_NAME_CHECKPOINTED_SIZE = "checkpointed_size";
 
+        public static final String FIELD_NAME_IP_ADDRESS = "ip";
+
         /**
          * The accurate name of this field should be 'checkpointed_data_size', keep it as before to
          * not break backwards compatibility for old web UI.
@@ -156,6 +158,9 @@ public class SubtaskCheckpointStatistics {
         @JsonProperty(FIELD_NAME_ABORTED)
         private final boolean aborted;
 
+        @JsonProperty(value = FIELD_NAME_IP_ADDRESS, required = false)
+        private final String ip;
+
         @JsonCreator
         public CompletedSubtaskCheckpointStatistics(
                 @JsonProperty(FIELD_NAME_INDEX) int index,
@@ -167,7 +172,8 @@ public class SubtaskCheckpointStatistics {
                 @JsonProperty(FIELD_NAME_ALIGNMENT) CheckpointAlignment alignment,
                 @JsonProperty(FIELD_NAME_START_DELAY) long startDelay,
                 @JsonProperty(FIELD_NAME_UNALIGNED_CHECKPOINT) boolean unalignedCheckpoint,
-                @JsonProperty(FIELD_NAME_ABORTED) boolean aborted) {
+                @JsonProperty(FIELD_NAME_ABORTED) boolean aborted,
+                @JsonProperty(FIELD_NAME_IP_ADDRESS) String ip) {
             super(index, "completed");
             this.ackTimestamp = ackTimestamp;
             this.duration = duration;
@@ -178,6 +184,7 @@ public class SubtaskCheckpointStatistics {
             this.startDelay = startDelay;
             this.unalignedCheckpoint = unalignedCheckpoint;
             this.aborted = aborted;
+            this.ip = ip;
         }
 
         public long getAckTimestamp() {
@@ -216,6 +223,10 @@ public class SubtaskCheckpointStatistics {
             return aborted;
         }
 
+        public String getIp() {
+            return ip;
+        }
+
         @Override
         public boolean equals(Object o) {
             if (this == o) {
@@ -233,7 +244,8 @@ public class SubtaskCheckpointStatistics {
                     && Objects.equals(alignment, that.alignment)
                     && startDelay == that.startDelay
                     && unalignedCheckpoint == that.unalignedCheckpoint
-                    && aborted == that.aborted;
+                    && aborted == that.aborted
+                    && Objects.equals(ip, that.ip);
         }
 
         @Override
@@ -247,7 +259,8 @@ public class SubtaskCheckpointStatistics {
                     alignment,
                     startDelay,
                     unalignedCheckpoint,
-                    aborted);
+                    aborted,
+                    ip);
         }
 
         /** Duration of the checkpoint. */

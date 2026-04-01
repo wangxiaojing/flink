@@ -73,7 +73,8 @@ class TaskCheckpointStatisticsWithSubtaskDetailsTest
                                 .CheckpointAlignment(2L, 4L, 5L, 3L),
                         42L,
                         true,
-                        false));
+                        false,
+                        "192.168.1.100"));
 
         return new TaskCheckpointStatisticsWithSubtaskDetails(
                 4L,

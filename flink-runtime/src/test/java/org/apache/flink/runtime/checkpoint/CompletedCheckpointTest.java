@@ -415,7 +415,7 @@ public class CompletedCheckpointTest {
                         44L,
                         true,
                         new SubtaskStateStats(
-                                123, 213123, 123123, 123123, 0, 0, 0, 0, 0, 0, false, true),
+                                123, 213123, 123123, 123123, 0, 0, 0, 0, 0, 0, false, true, null),
                         null);
 
         CompletedCheckpointStats copy = CommonTestUtils.createCopySerializable(completed);

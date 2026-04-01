@@ -48,13 +48,13 @@ import { NzTableModule, NzTableSortFn } from 'ng-zorro-antd/table';
 import { JobLocalService } from '../../job-local.service';
 
 function createSortFn(
-  selector: (item: CompletedSubTaskCheckpointStatistics) => number | boolean
+  selector: (item: CompletedSubTaskCheckpointStatistics) => number | boolean | string | null
 ): NzTableSortFn<SubTaskCheckpointStatisticsItem> {
-  // FIXME This type-asserts that pre / next are a specific subtype.
-  return (pre, next) =>
-    selector(pre as CompletedSubTaskCheckpointStatistics) > selector(next as CompletedSubTaskCheckpointStatistics)
-      ? 1
-      : -1;
+  return (pre, next) => {
+    const a = selector(pre as CompletedSubTaskCheckpointStatistics) ?? '';
+    const b = selector(next as CompletedSubTaskCheckpointStatistics) ?? '';
+    return a > b ? 1 : -1;
+  };
 }
 
 @Component({
@@ -77,6 +77,17 @@ export class JobCheckpointsSubtaskComponent implements OnInit, OnChanges, OnDest
   public mapOfSubtask: Map<number, JobVertexSubTaskData> = new Map();
 
   public readonly sortAckTimestampFn = createSortFn(item => item.ack_timestamp);
+  public readonly sortIPAddressFn: NzTableSortFn<SubTaskCheckpointStatisticsItem> = (a, b) => {
+    const ipA = (a as CompletedSubTaskCheckpointStatistics).ip ?? '';
+    const ipB = (b as CompletedSubTaskCheckpointStatistics).ip ?? '';
+    const normalize = (ip: string): string =>
+      ip
+        .split('.')
+        .map(seg => seg.padStart(3, '0'))
+        .join('.');
+
+    return normalize(ipA) > normalize(ipB) ? 1 : normalize(ipA) < normalize(ipB) ? -1 : 0;
+  };
   public readonly sortEndToEndDurationFn = createSortFn(item => item.end_to_end_duration);
   public readonly sortCheckpointedSizeFn = createSortFn(item => item.checkpointed_size);
   public readonly sortStateSizeFn = createSortFn(item => item.state_size);

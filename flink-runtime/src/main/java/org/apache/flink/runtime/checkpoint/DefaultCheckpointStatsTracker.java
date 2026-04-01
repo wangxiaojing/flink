@@ -567,7 +567,8 @@ public class DefaultCheckpointStatsTracker implements CheckpointStatsTracker {
                                         metrics.getAlignmentDurationNanos() / 1_000_000,
                                         metrics.getCheckpointStartDelayNanos() / 1_000_000,
                                         metrics.getUnalignedCheckpoint(),
-                                        false));
+                                        false,
+                                        null));
                 dirty = true;
             }
         } finally {

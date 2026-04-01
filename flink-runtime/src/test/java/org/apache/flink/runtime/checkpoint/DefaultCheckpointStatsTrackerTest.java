@@ -673,13 +673,14 @@ class DefaultCheckpointStatsTrackerTest {
                         subtasksByVertex);
 
         pending.reportSubtaskStats(
-                jobVertexID0, new SubtaskStateStats(0, 1, 2, 3, 24, 5, 6, 7, 28, 9, false, true));
+                jobVertexID0,
+                new SubtaskStateStats(0, 1, 2, 3, 24, 5, 6, 7, 28, 9, false, true, null));
         pending.reportSubtaskStats(
                 jobVertexID0,
-                new SubtaskStateStats(1, 12, 13, 14, 15, 16, 17, 18, 19, 20, false, true));
+                new SubtaskStateStats(1, 12, 13, 14, 15, 16, 17, 18, 19, 20, false, true, null));
         pending.reportSubtaskStats(
                 jobVertexID1,
-                new SubtaskStateStats(0, 21, 22, 23, 4, 25, 26, 27, 8, 29, true, true));
+                new SubtaskStateStats(0, 21, 22, 23, 4, 25, 26, 27, 8, 29, true, true, null));
         // Complete checkpoint => new snapshot
         tracker.reportCompletedCheckpoint(pending.toCompletedCheckpointStats(null, 1984));
         return reportedSpansOut;
@@ -984,7 +985,8 @@ class DefaultCheckpointStatsTrackerTest {
                         ignored,
                         ignored,
                         false,
-                        true);
+                        true,
+                        null);
 
         assertThat(pending.reportSubtaskStats(jobVertexID, subtaskStats)).isTrue();
 
@@ -1071,7 +1073,7 @@ class DefaultCheckpointStatsTrackerTest {
     }
 
     private SubtaskStateStats createSubtaskStats(int index, boolean unaligned) {
-        return new SubtaskStateStats(index, 0, 0, 0, 0, 0, 0, 0, 0, 0, unaligned, true);
+        return new SubtaskStateStats(index, 0, 0, 0, 0, 0, 0, 0, 0, 0, unaligned, true, null);
     }
 
     private void reportRestoredCheckpoint(

@@ -32,6 +32,7 @@ import org.apache.flink.runtime.state.CompletedCheckpointStorageLocation;
 import org.apache.flink.runtime.state.StateObject;
 import org.apache.flink.runtime.state.StateUtil;
 import org.apache.flink.runtime.state.memory.ByteStreamStateHandle;
+import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
 import org.apache.flink.util.CollectionUtil;
 import org.apache.flink.util.ExceptionUtils;
 import org.apache.flink.util.Preconditions;
@@ -427,6 +428,14 @@ public class PendingCheckpoint implements Checkpoint {
                 long checkpointStartDelayMillis =
                         metrics.getCheckpointStartDelayNanos() / 1_000_000;
 
+                String taskManagerIp = null;
+                if (vertex.getCurrentExecutionAttempt() != null) {
+                    TaskManagerLocation location = vertex.getCurrentAssignedResourceLocation();
+                    if (location != null) {
+                        taskManagerIp = location.address().getHostAddress();
+                    }
+                }
+
                 SubtaskStateStats subtaskStateStats =
                         new SubtaskStateStats(
                                 vertex.getParallelSubtaskIndex(),
@@ -440,7 +449,8 @@ public class PendingCheckpoint implements Checkpoint {
                                 alignmentDurationMillis,
                                 checkpointStartDelayMillis,
                                 metrics.getUnalignedCheckpoint(),
-                                true);
+                                true,
+                                taskManagerIp);
 
                 LOG.trace(
                         "Checkpoint {} stats for {}: size={}Kb, duration={}ms, sync part={}ms, async part={}ms",
