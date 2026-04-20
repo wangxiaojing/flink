@@ -21,14 +21,14 @@ under the License.
 	<parent>
 		<groupId>org.apache</groupId>
 		<artifactId>apache</artifactId>
-		<version>20</version>
+		<version>35</version>
 	</parent>
 
 	<modelVersion>4.0.0</modelVersion>
 
 	<groupId>org.apache.flink</groupId>
 	<artifactId>flink-parent</artifactId>
-	<version>2.3-SNAPSHOT</version>
+	<version>2.4-SNAPSHOT</version>
 
 	<name>Flink : </name>
 	<packaging>pom</packaging>
@@ -2177,6 +2177,8 @@ under the License.
 						<!-- Make sure that we only use Java 11 compatible APIs -->
 						<source>${source.java.version}</source>
 						<target>${target.java.version}</target>
+						<!-- Starting Apache parent pom 31 it uses release which makes impossible to use add-exports -->
+						<release combine.self="override"/>
 						<!-- The semantics of this option are reversed, see MCOMPILER-209. -->
 						<useIncrementalCompilation>false</useIncrementalCompilation>
 						<compilerArgs>
@@ -2240,6 +2242,10 @@ under the License.
 					<artifactId>spotless-maven-plugin</artifactId>
 					<version>${spotless.version}</version>
 					<configuration>
+						<upToDateChecking>
+							<enabled>true</enabled>
+							<indexFile>${project.basedir}/.spotless-index-file</indexFile>
+						</upToDateChecking>
 						<java>
 							<googleJavaFormat>
 								<version>1.24.0</version>
@@ -2446,16 +2452,18 @@ under the License.
 					<!-- run via "mvn org.owasp:dependency-check-maven:aggregate" -->
 					<groupId>org.owasp</groupId>
 					<artifactId>dependency-check-maven</artifactId>
-					<version>5.0.0-M2</version>
+					<version>12.2.1</version>
 					<configuration>
 						<format>ALL</format>
 						<skipSystemScope>true</skipSystemScope>
 						<skipProvidedScope>true</skipProvidedScope>
 						<excludes>
+							<exclude>*flink-architecture-tests*</exclude>
 							<exclude>*flink-docs</exclude>
 							<exclude>*flink-end-to-end-tests</exclude>
 							<exclude>*flink-fs-tests*</exclude>
 							<exclude>*flink-yarn-tests*</exclude>
+							<exclude>*flink-test*</exclude>
 						</excludes>
 					</configuration>
 				</plugin>

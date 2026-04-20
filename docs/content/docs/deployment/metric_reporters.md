@@ -213,6 +213,7 @@ metrics.reporter.promgateway.randomJobNameSuffix: true
 metrics.reporter.promgateway.deleteOnShutdown: false
 metrics.reporter.promgateway.groupingKey: k1=v1;k2=v2
 metrics.reporter.promgateway.interval: 60 SECONDS
+metrics.reporter.promgateway.allowList: metricA,metricB
 ```
 
 The PrometheusPushGatewayReporter pushes metrics to a [Pushgateway](https://github.com/prometheus/pushgateway), which can be scraped by Prometheus.
@@ -308,6 +309,15 @@ metrics.reporter.otel.exporter.protocol: gRPC
 metrics.reporter.otel.factory.class: org.apache.flink.metrics.otel.OpenTelemetryMetricReporterFactory
 metrics.reporter.otel.exporter.endpoint: http://127.0.0.1:9090
 metrics.reporter.otel.exporter.protocol: HTTP
+```
+
+```yaml
+# With batching enabled (500 metrics per export request)
+metrics.reporter.otel.factory.class: org.apache.flink.metrics.otel.OpenTelemetryMetricReporterFactory
+metrics.reporter.otel.exporter.endpoint: http://127.0.0.1:1337
+metrics.reporter.otel.exporter.protocol: gRPC
+metrics.reporter.otel.batch.size: 1500
+metrics.reporter.otel.export-completion-timeout-millis: 60000
 ```
 
 ### Slf4j

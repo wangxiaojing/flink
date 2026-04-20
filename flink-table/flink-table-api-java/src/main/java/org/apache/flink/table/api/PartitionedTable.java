@@ -37,6 +37,36 @@ import org.apache.flink.table.functions.UserDefinedFunction;
 public interface PartitionedTable {
 
     /**
+     * Sorts the partitioned table within each partition.
+     *
+     * <p>This is useful for process table functions that need ordered input within each set scoped
+     * by the key.
+     *
+     * <p>Note: The first sorting column must be a time attribute column in ascending order for
+     * which a watermark has been declared. The watermarked column must be forwarded without any
+     * modification to ensure event-time sorting. Secondary ordering columns can differ and are used
+     * for deterministic ordering within the same timestamp.
+     *
+     * <p>Example:
+     *
+     * <pre>{@code
+     * // Primary ordering by watermarked timestamp, secondary by score
+     * env.fromCall(
+     *   "MyPTF",
+     *   table
+     *     .partitionBy($("key"))
+     *     .orderBy($("ts").asc(), $("score").desc())
+     *     .asArgument("input_table")
+     * )
+     * }</pre>
+     *
+     * @param fields expressions for ordering (e.g., {@code $("ts").asc(), $("score").desc()})
+     * @return a partitioned and ordered table
+     * @see ProcessTableFunction
+     */
+    PartitionedTable orderBy(Expression... fields);
+
+    /**
      * Converts this table object into a named argument.
      *
      * <p>This method is intended for calls to process table functions (PTFs) that take table
@@ -51,8 +81,8 @@ public interface PartitionedTable {
      * )
      * }</pre>
      *
-     * @see ProcessTableFunction
      * @return an expression that can be passed into {@link TableEnvironment#fromCall}.
+     * @see ProcessTableFunction
      */
     ApiExpression asArgument(String name);
 
@@ -139,31 +169,4 @@ public interface PartitionedTable {
      * @see ProcessTableFunction
      */
     Table process(Class<? extends UserDefinedFunction> function, Object... arguments);
-
-    /**
-     * Converts this dynamic table into an append-only table with an explicit operation code column
-     * using the built-in {@code TO_CHANGELOG} process table function.
-     *
-     * <p>Each input row - regardless of its original RowKind - is emitted as an INSERT-only row
-     * with a string {@code "op"} column indicating the original operation (INSERT, UPDATE_AFTER,
-     * DELETE, etc.).
-     *
-     * <p>Optional arguments can be passed using named expressions:
-     *
-     * <pre>{@code
-     * // Default: adds 'op' column and supports all changelog modes
-     * table.partitionBy($("id")).toChangelog();
-     *
-     * // Custom op column name and mapping
-     * table.partitionBy($("id")).toChangelog(
-     *     descriptor("op_code").asArgument("op"),
-     *     map("INSERT", "I", "UPDATE_AFTER", "U").asArgument("op_mapping")
-     * );
-     * }</pre>
-     *
-     * @param arguments optional named arguments for {@code op} and {@code op_mapping}
-     * @return an append-only {@link Table} with an {@code op} column prepended to the non-partition
-     *     columns
-     */
-    Table toChangelog(Expression... arguments);
 }

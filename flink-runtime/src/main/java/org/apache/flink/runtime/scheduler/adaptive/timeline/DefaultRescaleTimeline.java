@@ -20,13 +20,14 @@ package org.apache.flink.runtime.scheduler.adaptive.timeline;
 
 import org.apache.flink.runtime.scheduler.adaptive.allocator.JobInformation;
 import org.apache.flink.runtime.util.BoundedFIFOQueue;
-import org.apache.flink.util.AbstractID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -53,7 +54,7 @@ public class DefaultRescaleTimeline implements RescaleTimeline {
     public DefaultRescaleTimeline(
             Supplier<JobInformation> jobInformationGetter, int maxHistorySize) {
         this.jobInformationGetter = jobInformationGetter;
-        this.rescaleIdInfo = new RescaleIdInfo(new AbstractID(), 0L);
+        this.rescaleIdInfo = new RescaleIdInfo(new RescaleIdInfo.ResourceRequirementsID(), 0L);
         this.latestRescales = new ConcurrentHashMap<>(TerminalState.values().length);
         this.rescaleHistory = new BoundedFIFOQueue<>(maxHistorySize);
         this.rescalesSummary = new RescalesSummary(maxHistorySize);
@@ -122,9 +123,19 @@ public class DefaultRescaleTimeline implements RescaleTimeline {
         return currentRescale;
     }
 
+    @Override
+    public RescalesStatsSnapshot createSnapshot() {
+        List<Rescale> rescales = rescaleHistory.toArrayList();
+        Collections.reverse(rescales);
+        return new RescalesStatsSnapshot(
+                List.copyOf(rescales),
+                Map.copyOf(latestRescales),
+                rescalesSummary.createSnapshot());
+    }
+
     private RescaleIdInfo nextRescaleId(boolean newRescaleEpoch) {
         if (newRescaleEpoch) {
-            rescaleIdInfo = new RescaleIdInfo(new AbstractID(), 1L);
+            rescaleIdInfo = new RescaleIdInfo(new RescaleIdInfo.ResourceRequirementsID(), 1L);
         } else {
             rescaleIdInfo =
                     new RescaleIdInfo(

@@ -225,6 +225,7 @@ metrics.reporter.promgateway.randomJobNameSuffix: true
 metrics.reporter.promgateway.deleteOnShutdown: false
 metrics.reporter.promgateway.groupingKey: k1=v1;k2=v2
 metrics.reporter.promgateway.interval: 60 SECONDS
+metrics.reporter.promgateway.allowList: metricA,metricB
 ```
 
 PrometheusPushGatewayReporter 发送器将运行指标发送给 [Pushgateway](https://github.com/prometheus/pushgateway)，Prometheus 再从 Pushgateway 拉取、解析运行指标。
@@ -303,6 +304,36 @@ metrics.reporter.dghttp.dataCenter: US
 metrics.reporter.dghttp.maxMetricsPerRequest: 2000
 metrics.reporter.dghttp.interval: 60 SECONDS
 metrics.reporter.dghttp.useLogicalIdentifier: true
+```
+
+### OpenTelemetry
+#### (org.apache.flink.metrics.otel.OpenTelemetryMetricReporterFactory)
+
+Parameters:
+
+{{< include_reporter_config "layouts/shortcodes/generated/open_telemetry_reporter_configuration.html" >}}
+
+Example configurations:
+
+```yaml
+metrics.reporter.otel.factory.class: org.apache.flink.metrics.otel.OpenTelemetryMetricReporterFactory
+metrics.reporter.otel.exporter.endpoint: http://127.0.0.1:1337
+metrics.reporter.otel.exporter.protocol: gRPC
+```
+
+```yaml
+metrics.reporter.otel.factory.class: org.apache.flink.metrics.otel.OpenTelemetryMetricReporterFactory
+metrics.reporter.otel.exporter.endpoint: http://127.0.0.1:9090
+metrics.reporter.otel.exporter.protocol: HTTP
+```
+
+```yaml
+# With batching enabled (500 metrics per export request)
+metrics.reporter.otel.factory.class: org.apache.flink.metrics.otel.OpenTelemetryMetricReporterFactory
+metrics.reporter.otel.exporter.endpoint: http://127.0.0.1:1337
+metrics.reporter.otel.exporter.protocol: gRPC
+metrics.reporter.otel.batch.size: 1500
+metrics.reporter.otel.export-completion-timeout-millis: 60000
 ```
 
 <a name="slf4j"></a>

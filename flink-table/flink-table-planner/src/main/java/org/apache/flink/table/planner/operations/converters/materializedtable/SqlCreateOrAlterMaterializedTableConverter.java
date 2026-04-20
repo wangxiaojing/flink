@@ -24,7 +24,6 @@ import org.apache.flink.table.api.Schema;
 import org.apache.flink.table.api.ValidationException;
 import org.apache.flink.table.catalog.CatalogBaseTable.TableKind;
 import org.apache.flink.table.catalog.CatalogMaterializedTable.RefreshMode;
-import org.apache.flink.table.catalog.Column;
 import org.apache.flink.table.catalog.ObjectIdentifier;
 import org.apache.flink.table.catalog.ResolvedCatalogBaseTable;
 import org.apache.flink.table.catalog.ResolvedCatalogMaterializedTable;
@@ -32,6 +31,8 @@ import org.apache.flink.table.catalog.ResolvedSchema;
 import org.apache.flink.table.catalog.SchemaResolver;
 import org.apache.flink.table.catalog.TableChange;
 import org.apache.flink.table.catalog.TableDistribution;
+import org.apache.flink.table.catalog.UniqueConstraint;
+import org.apache.flink.table.catalog.WatermarkSpec;
 import org.apache.flink.table.operations.Operation;
 import org.apache.flink.table.operations.materializedtable.CreateMaterializedTableOperation;
 import org.apache.flink.table.operations.materializedtable.FullAlterMaterializedTableOperation;
@@ -123,33 +124,12 @@ public class SqlCreateOrAlterMaterializedTableConverter
     private Function<ResolvedCatalogMaterializedTable, List<TableChange>> buildTableChanges(
             final MergeContext mergeContext, final SchemaResolver schemaResolver) {
         return oldTable -> {
-            final List<TableChange> changes = new ArrayList<>();
+            final List<TableChange> changes =
+                    getSchemaTableChanges(mergeContext, schemaResolver, oldTable);
 
-            final ResolvedSchema oldSchema = oldTable.getResolvedSchema();
-            final List<Column> newColumns =
-                    MaterializedTableUtils.validateAndExtractNewColumns(
-                            oldSchema,
-                            schemaResolver.resolve(mergeContext.getMergedSchema()),
-                            mergeContext.hasSchemaDefinition());
-
-            newColumns.forEach(column -> changes.add(TableChange.add(column)));
-            changes.add(
-                    TableChange.modifyDefinitionQuery(
-                            mergeContext.getMergedOriginalQuery(),
-                            mergeContext.getMergedExpandedQuery()));
-
-            final Map<String, String> oldOptions = oldTable.getOptions();
-            final Map<String, String> newOptions = mergeContext.getMergedTableOptions();
-
-            for (Map.Entry<String, String> newOptionEntry : newOptions.entrySet()) {
-                changes.add(TableChange.set(newOptionEntry.getKey(), newOptionEntry.getValue()));
-            }
-
-            for (Map.Entry<String, String> oldOptionEntry : oldOptions.entrySet()) {
-                if (newOptions.get(oldOptionEntry.getKey()) == null) {
-                    changes.add(TableChange.reset(oldOptionEntry.getKey()));
-                }
-            }
+            changes.addAll(getQueryTableChanges(mergeContext, oldTable));
+            changes.addAll(getOptionsTableChanges(mergeContext, oldTable));
+            changes.addAll(getDistributionTableChanges(mergeContext, oldTable));
 
             final RefreshMode oldRefreshMode = oldTable.getRefreshMode();
             final RefreshMode newRefreshMode = mergeContext.getMergedRefreshMode();
@@ -157,21 +137,119 @@ public class SqlCreateOrAlterMaterializedTableConverter
                 throw new ValidationException("Changing of REFRESH MODE is unsupported");
             }
 
-            final TableDistribution oldDistribution = oldTable.getDistribution().orElse(null);
-            final TableDistribution newDistribution =
-                    mergeContext.getMergedTableDistribution().orElse(null);
-            if (!Objects.equals(oldDistribution, newDistribution)) {
-                if (oldDistribution == null) {
-                    changes.add(TableChange.add(newDistribution));
-                } else if (newDistribution == null) {
-                    changes.add(TableChange.dropDistribution());
-                } else {
-                    changes.add(TableChange.modify(newDistribution));
-                }
-            }
-
             return changes;
         };
+    }
+
+    private List<TableChange> getDistributionTableChanges(
+            final MergeContext mergeContext, final ResolvedCatalogMaterializedTable oldTable) {
+        final TableDistribution oldDistribution = oldTable.getDistribution().orElse(null);
+        final TableDistribution newDistribution =
+                mergeContext.getMergedTableDistribution().orElse(null);
+        if (!Objects.equals(oldDistribution, newDistribution)) {
+            if (oldDistribution == null) {
+                return List.of(TableChange.add(newDistribution));
+            } else if (newDistribution == null) {
+                return List.of(TableChange.dropDistribution());
+            } else {
+                return List.of(TableChange.modify(newDistribution));
+            }
+        }
+        return List.of();
+    }
+
+    private List<TableChange> getOptionsTableChanges(
+            final MergeContext mergeContext, final ResolvedCatalogMaterializedTable oldTable) {
+        final List<TableChange> changes = new ArrayList<>();
+        final Map<String, String> oldOptions = oldTable.getOptions();
+        final Map<String, String> newOptions = mergeContext.getMergedTableOptions();
+
+        for (Map.Entry<String, String> newOptionEntry : newOptions.entrySet()) {
+            if (!newOptionEntry.getValue().equals(oldOptions.get(newOptionEntry.getKey()))) {
+                changes.add(TableChange.set(newOptionEntry.getKey(), newOptionEntry.getValue()));
+            }
+        }
+
+        for (Map.Entry<String, String> oldOptionEntry : oldOptions.entrySet()) {
+            if (newOptions.get(oldOptionEntry.getKey()) == null) {
+                changes.add(TableChange.reset(oldOptionEntry.getKey()));
+            }
+        }
+        return changes;
+    }
+
+    private List<TableChange> getQueryTableChanges(
+            final MergeContext mergeContext, final ResolvedCatalogMaterializedTable oldTable) {
+        final String originalQuery = oldTable.getOriginalQuery();
+        final String expandedQuery = oldTable.getExpandedQuery();
+        if (!originalQuery.equals(mergeContext.getMergedOriginalQuery())
+                || !expandedQuery.equals(mergeContext.getMergedExpandedQuery())) {
+            return List.of(
+                    TableChange.modifyDefinitionQuery(
+                            mergeContext.getMergedOriginalQuery(),
+                            mergeContext.getMergedExpandedQuery()));
+        }
+        return List.of();
+    }
+
+    private List<TableChange> getSchemaTableChanges(
+            final MergeContext mergeContext,
+            final SchemaResolver schemaResolver,
+            final ResolvedCatalogMaterializedTable oldTable) {
+        final ResolvedSchema oldSchema = oldTable.getResolvedSchema();
+        final ResolvedSchema newSchema = schemaResolver.resolve(mergeContext.getMergedSchema());
+        final boolean hasSchemaDefinition = mergeContext.hasSchemaDefinition();
+        final List<TableChange> changes =
+                new ArrayList<>(
+                        MaterializedTableUtils.validateAndExtractColumnChanges(
+                                oldSchema, newSchema, hasSchemaDefinition));
+
+        getConstraintChange(oldSchema, newSchema, mergeContext.hasConstraintDefinition())
+                .ifPresent(changes::add);
+        getWatermarkChange(oldSchema, newSchema, hasSchemaDefinition).ifPresent(changes::add);
+        return changes;
+    }
+
+    private Optional<TableChange> getConstraintChange(
+            final ResolvedSchema oldSchema,
+            final ResolvedSchema newSchema,
+            boolean hasConstraintDefinition) {
+        final UniqueConstraint oldConstraint = oldSchema.getPrimaryKey().orElse(null);
+        final UniqueConstraint newConstraint = newSchema.getPrimaryKey().orElse(null);
+        if (hasConstraintDefinition && !Objects.equals(oldConstraint, newConstraint)) {
+            if (newConstraint == null) {
+                return Optional.of(TableChange.dropConstraint(oldConstraint.getName()));
+            } else if (oldConstraint == null) {
+                return Optional.of(TableChange.add(newConstraint));
+            } else {
+                return Optional.of(TableChange.modify(newConstraint));
+            }
+        }
+        return Optional.empty();
+    }
+
+    private Optional<TableChange> getWatermarkChange(
+            final ResolvedSchema oldSchema,
+            final ResolvedSchema newSchema,
+            boolean hasSchemaDefinition) {
+        final WatermarkSpec oldWatermarkSpec =
+                oldSchema.getWatermarkSpecs().isEmpty()
+                        ? null
+                        : oldSchema.getWatermarkSpecs().get(0);
+        final WatermarkSpec newWatermarkSpec =
+                newSchema.getWatermarkSpecs().isEmpty()
+                        ? null
+                        : newSchema.getWatermarkSpecs().get(0);
+        if (hasSchemaDefinition && !Objects.equals(oldWatermarkSpec, newWatermarkSpec)) {
+            if (newWatermarkSpec == null) {
+                return Optional.of(TableChange.dropWatermark());
+            } else if (oldWatermarkSpec == null) {
+                return Optional.of(TableChange.add(newWatermarkSpec));
+            } else {
+                return Optional.of(TableChange.modify(newWatermarkSpec));
+            }
+        }
+        return Optional.empty();
     }
 
     @Override
@@ -197,6 +275,15 @@ public class SqlCreateOrAlterMaterializedTableConverter
                 final SqlNodeList sqlNodeList = sqlCreateMaterializedTable.getColumnList();
                 return !sqlNodeList.getList().isEmpty()
                         && sqlNodeList.getList().get(0) instanceof SqlRegularColumn;
+            }
+
+            @Override
+            public boolean hasConstraintDefinition() {
+                if (!sqlCreateMaterializedTable.getTableConstraints().isEmpty()) {
+                    return true;
+                }
+
+                return hasSchemaDefinition();
             }
 
             @Override

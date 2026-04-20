@@ -18,6 +18,7 @@
 
 package org.apache.flink.fs.s3native;
 
+import org.apache.flink.annotation.Experimental;
 import org.apache.flink.configuration.ConfigOption;
 import org.apache.flink.configuration.ConfigOptions;
 import org.apache.flink.configuration.Configuration;
@@ -32,7 +33,19 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.URI;
+import java.time.Duration;
 
+/**
+ * Factory for creating Native S3 FileSystem instances.
+ *
+ * <p>This factory creates {@link NativeS3FileSystem} instances for accessing Amazon S3 buckets
+ * using AWS SDK v2. The Native S3 FileSystem provides a drop-in replacement for Presto and Hadoop
+ * S3 implementations with minimal external dependencies.
+ *
+ * @see NativeS3FileSystem
+ * @see org.apache.flink.core.fs.FileSystemFactory
+ */
+@Experimental
 public class NativeS3FileSystemFactory implements FileSystemFactory {
 
     private static final Logger LOG = LoggerFactory.getLogger(NativeS3FileSystemFactory.class);
@@ -191,6 +204,43 @@ public class NativeS3FileSystemFactory implements FileSystemFactory {
                                     + "Uses the AWS SDK's default retry strategy (exponential backoff with jitter). "
                                     + "Set to 0 to disable retries.");
 
+    public static final ConfigOption<Duration> CONNECTION_TIMEOUT =
+            ConfigOptions.key("s3.connection.timeout")
+                    .durationType()
+                    .defaultValue(Duration.ofSeconds(60))
+                    .withDescription(
+                            "HTTP connection timeout for the S3 client. "
+                                    + "Controls how long the client waits to establish a connection.");
+
+    public static final ConfigOption<Duration> SOCKET_TIMEOUT =
+            ConfigOptions.key("s3.socket.timeout")
+                    .durationType()
+                    .defaultValue(Duration.ofSeconds(60))
+                    .withDescription(
+                            "HTTP socket timeout for the S3 client. "
+                                    + "Controls how long the client waits for data after connection is established.");
+
+    public static final ConfigOption<Duration> CONNECTION_MAX_IDLE_TIME =
+            ConfigOptions.key("s3.connection.max-idle-time")
+                    .durationType()
+                    .defaultValue(Duration.ofSeconds(60))
+                    .withDescription(
+                            "Maximum idle time for HTTP connections in the connection pool.");
+
+    public static final ConfigOption<Duration> FS_CLOSE_TIMEOUT =
+            ConfigOptions.key("s3.close.timeout")
+                    .durationType()
+                    .defaultValue(Duration.ofSeconds(60))
+                    .withDescription(
+                            "Timeout for closing the S3 filesystem. "
+                                    + "Controls how long the filesystem waits for pending operations to complete during shutdown.");
+
+    public static final ConfigOption<Duration> CLIENT_CLOSE_TIMEOUT =
+            ConfigOptions.key("s3.client.close.timeout")
+                    .durationType()
+                    .defaultValue(Duration.ofSeconds(30))
+                    .withDescription("Timeout for closing the S3 client and releasing resources.");
+
     public static final ConfigOption<String> AWS_CREDENTIALS_PROVIDER =
             ConfigOptions.key("fs.s3.aws.credentials.provider")
                     .stringType()
@@ -305,6 +355,10 @@ public class NativeS3FileSystemFactory implements FileSystemFactory {
                         .region(region)
                         .endpoint(endpoint)
                         .pathStyleAccess(pathStyleAccess)
+                        .connectionTimeout(config.get(CONNECTION_TIMEOUT))
+                        .socketTimeout(config.get(SOCKET_TIMEOUT))
+                        .connectionMaxIdleTime(config.get(CONNECTION_MAX_IDLE_TIME))
+                        .clientCloseTimeout(config.get(CLIENT_CLOSE_TIMEOUT))
                         .assumeRoleArn(config.get(ASSUME_ROLE_ARN))
                         .assumeRoleExternalId(config.get(ASSUME_ROLE_EXTERNAL_ID))
                         .assumeRoleSessionName(config.get(ASSUME_ROLE_SESSION_NAME))
@@ -333,6 +387,7 @@ public class NativeS3FileSystemFactory implements FileSystemFactory {
                 maxConcurrentUploads,
                 bulkCopyHelper,
                 useAsyncOperations,
-                readBufferSize);
+                readBufferSize,
+                config.get(FS_CLOSE_TIMEOUT));
     }
 }

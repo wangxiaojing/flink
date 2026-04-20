@@ -257,7 +257,7 @@ class CatalogBaseTableResolutionTest {
         assertThat(resolvedCatalogMaterializedTable.getResolvedSchema())
                 .isEqualTo(RESOLVED_MATERIALIZED_TABLE_SCHEMA);
         assertThat(resolvedCatalogMaterializedTable.getDefinitionFreshness())
-                .isEqualTo(IntervalFreshness.ofSecond("30"));
+                .isEqualTo(IntervalFreshness.ofSecond(30));
         assertThat(resolvedCatalogMaterializedTable.getOriginalQuery())
                 .isEqualTo(DEFAULT_ORIGINAL_QUERY);
         assertThat(resolvedCatalogMaterializedTable.getExpandedQuery())
@@ -352,6 +352,45 @@ class CatalogBaseTableResolutionTest {
                 .hasRootCauseMessage(
                         "Invalid bucket count '0'. The number of buckets for a "
                                 + "distributed table must be at least 1.");
+    }
+
+    @Test
+    void testCatalogMaterializedTableToCatalogTable() {
+        final CatalogMaterializedTable materializedTable = catalogMaterializedTable();
+
+        final CatalogTable catalogTable = materializedTable.toCatalogTable();
+
+        // Verify the conversion preserves properties
+        assertThat(catalogTable.getUnresolvedSchema())
+                .isEqualTo(materializedTable.getUnresolvedSchema());
+        assertThat(catalogTable.getComment()).isEqualTo(materializedTable.getComment());
+        assertThat(catalogTable.getPartitionKeys()).isEqualTo(materializedTable.getPartitionKeys());
+        assertThat(catalogTable.getOptions()).isEqualTo(materializedTable.getOptions());
+        assertThat(catalogTable.getDistribution()).isEqualTo(materializedTable.getDistribution());
+        assertThat(catalogTable.getSnapshot()).isEqualTo(materializedTable.getSnapshot());
+    }
+
+    @Test
+    void testResolvedCatalogMaterializedTableToResolvedCatalogTable() {
+        final CatalogMaterializedTable materializedTable = catalogMaterializedTable();
+
+        final ResolvedCatalogMaterializedTable resolvedMaterializedTable =
+                resolveCatalogBaseTable(ResolvedCatalogMaterializedTable.class, materializedTable);
+
+        final ResolvedCatalogTable resolvedCatalogTable =
+                resolvedMaterializedTable.toResolvedCatalogTable();
+
+        // Verify schema is preserved
+        assertThat(resolvedCatalogTable.getResolvedSchema())
+                .isEqualTo(resolvedMaterializedTable.getResolvedSchema());
+
+        // Verify origin properties are preserved
+        assertThat(resolvedCatalogTable.getComment())
+                .isEqualTo(resolvedMaterializedTable.getComment());
+        assertThat(resolvedCatalogTable.getPartitionKeys())
+                .isEqualTo(resolvedMaterializedTable.getPartitionKeys());
+        assertThat(resolvedCatalogTable.getOptions())
+                .isEqualTo(resolvedMaterializedTable.getOptions());
     }
 
     // --------------------------------------------------------------------------------------------
@@ -463,7 +502,7 @@ class CatalogBaseTableResolutionTest {
                 .options(Collections.emptyMap())
                 .originalQuery(DEFAULT_ORIGINAL_QUERY)
                 .expandedQuery(DEFAULT_EXPANDED_QUERY)
-                .freshness(IntervalFreshness.ofSecond("30"))
+                .freshness(IntervalFreshness.ofSecond(30))
                 .logicalRefreshMode(LogicalRefreshMode.AUTOMATIC)
                 .refreshMode(RefreshMode.CONTINUOUS)
                 .refreshStatus(RefreshStatus.INITIALIZING)

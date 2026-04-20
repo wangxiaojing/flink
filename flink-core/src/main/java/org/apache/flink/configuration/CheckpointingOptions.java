@@ -670,10 +670,9 @@ public class CheckpointingOptions {
                                     + "when job restores from the unaligned checkpoint.");
 
     @Experimental
-    @Documentation.ExcludeFromDocumentation(
-            "This option is not yet ready for public use, will be documented in a follow-up commit")
-    public static final ConfigOption<Boolean> UNALIGNED_DURING_RECOVERY_ENABLED =
-            ConfigOptions.key("execution.checkpointing.unaligned.during-recovery.enabled")
+    @Documentation.Section(Documentation.Sections.COMMON_CHECKPOINTING)
+    public static final ConfigOption<Boolean> CHECKPOINTING_DURING_RECOVERY_ENABLED =
+            ConfigOptions.key("execution.checkpointing.during-recovery.enabled")
                     .booleanType()
                     .defaultValue(false)
                     .withDescription(
@@ -800,14 +799,14 @@ public class CheckpointingOptions {
      * execution.
      *
      * @param config the configuration to check
-     * @return {@code true} if unaligned checkpoint during recovery is enabled, {@code false}
+     * @return {@code true} if unaligned checkpointing during recovery is enabled, {@code false}
      *     otherwise
      */
     @Internal
-    public static boolean isUnalignedDuringRecoveryEnabled(Configuration config) {
+    public static boolean isCheckpointingDuringRecoveryEnabled(Configuration config) {
         if (!config.get(UNALIGNED_RECOVER_OUTPUT_ON_DOWNSTREAM)) {
             return false;
         }
-        return config.get(UNALIGNED_DURING_RECOVERY_ENABLED);
+        return config.get(CHECKPOINTING_DURING_RECOVERY_ENABLED);
     }
 }
