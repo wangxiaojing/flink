@@ -28,12 +28,10 @@ import org.apache.flink.runtime.checkpoint.CheckpointCoordinatorTest.OperatorSub
 import org.apache.flink.runtime.checkpoint.CheckpointCoordinatorTestingUtils.StringSerializer;
 import org.apache.flink.runtime.checkpoint.PendingCheckpoint.TaskAcknowledgeResult;
 import org.apache.flink.runtime.checkpoint.hooks.MasterHooks;
-import org.apache.flink.runtime.clusterframework.types.ResourceID;
 import org.apache.flink.runtime.executiongraph.Execution;
 import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
 import org.apache.flink.runtime.executiongraph.ExecutionJobVertex;
 import org.apache.flink.runtime.executiongraph.ExecutionVertex;
-import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.jobgraph.OperatorID;
 import org.apache.flink.runtime.operators.coordination.OperatorInfo;
 import org.apache.flink.runtime.operators.coordination.TestingOperatorInfo;
@@ -41,7 +39,6 @@ import org.apache.flink.runtime.state.CheckpointStorageLocationReference;
 import org.apache.flink.runtime.state.TestingStreamStateHandle;
 import org.apache.flink.runtime.state.filesystem.FsCheckpointStorageLocation;
 import org.apache.flink.runtime.state.memory.ByteStreamStateHandle;
-import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
 import org.apache.flink.testutils.junit.utils.TempDirUtils;
 import org.apache.flink.util.concurrent.Executors;
 
@@ -52,13 +49,11 @@ import javax.annotation.Nullable;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
-import java.net.InetAddress;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
@@ -512,85 +507,6 @@ class PendingCheckpointTest {
                 new CheckpointMetrics());
         assertThat(recordCheckpointPlan.getReportedOperatorsFinishedTasks())
                 .contains(ACK_TASKS.get(0).getVertex());
-    }
-
-    @Test
-    void testAcknowledgeTaskCapturesTaskManagerIp() throws Exception {
-        final String expectedIp = "10.0.0.1";
-        final ExecutionAttemptID ipTestAttemptId = createExecutionAttemptId();
-        final JobVertexID jobVertexId = new JobVertexID();
-
-        ExecutionJobVertex ejv = mock(ExecutionJobVertex.class);
-        when(ejv.getOperatorIDs())
-                .thenReturn(Collections.singletonList(OperatorIDPair.generatedIDOnly(OPERATOR_ID)));
-
-        TaskManagerLocation location =
-                new TaskManagerLocation(
-                        ResourceID.generate(), InetAddress.getByName(expectedIp), 6121);
-
-        Execution currentAttempt = mock(Execution.class);
-        ExecutionVertex vertex = mock(ExecutionVertex.class);
-        when(vertex.getMaxParallelism()).thenReturn(MAX_PARALLELISM);
-        when(vertex.getTotalNumberOfParallelSubtasks()).thenReturn(PARALLELISM);
-        when(vertex.getJobVertex()).thenReturn(ejv);
-        when(vertex.getJobvertexId()).thenReturn(jobVertexId);
-        when(vertex.getTaskNameWithSubtaskIndex()).thenReturn("test-task (0/1)");
-        when(vertex.getCurrentExecutionAttempt()).thenReturn(currentAttempt);
-        when(vertex.getCurrentAssignedResourceLocation()).thenReturn(location);
-
-        Execution execution = mock(Execution.class);
-        when(execution.getAttemptId()).thenReturn(ipTestAttemptId);
-        when(execution.getVertex()).thenReturn(vertex);
-
-        Map<JobVertexID, Integer> taskStatsCounts = new HashMap<>();
-        taskStatsCounts.put(jobVertexId, PARALLELISM);
-        PendingCheckpointStats pendingStats =
-                new PendingCheckpointStats(
-                        0,
-                        1,
-                        CheckpointProperties.forCheckpoint(
-                                CheckpointRetentionPolicy.NEVER_RETAIN_AFTER_TERMINATION),
-                        taskStatsCounts);
-
-        CheckpointPlan plan =
-                new DefaultCheckpointPlan(
-                        Collections.emptyList(),
-                        Collections.singletonList(execution),
-                        Collections.singletonList(vertex),
-                        Collections.emptyList(),
-                        Collections.emptyList(),
-                        true);
-
-        final Path checkpointDir = new Path(TempDirUtils.newFolder(tmpFolder).toURI());
-        final FsCheckpointStorageLocation storageLocation =
-                new FsCheckpointStorageLocation(
-                        LocalFileSystem.getSharedInstance(),
-                        checkpointDir,
-                        checkpointDir,
-                        checkpointDir,
-                        CheckpointStorageLocationReference.getDefault(),
-                        1024,
-                        4096);
-
-        PendingCheckpoint checkpoint =
-                new PendingCheckpoint(
-                        new JobID(),
-                        0,
-                        1,
-                        plan,
-                        Collections.emptyList(),
-                        Collections.emptyList(),
-                        CheckpointProperties.forCheckpoint(
-                                CheckpointRetentionPolicy.NEVER_RETAIN_AFTER_TERMINATION),
-                        new CompletableFuture<>(),
-                        pendingStats,
-                        new CompletableFuture<>());
-        checkpoint.setCheckpointTargetLocation(storageLocation);
-
-        checkpoint.acknowledgeTask(ipTestAttemptId, null, new CheckpointMetrics());
-
-        assertThat(pendingStats.getLatestAcknowledgedSubtaskStats()).isNotNull();
-        assertThat(pendingStats.getLatestAcknowledgedSubtaskStats().getIp()).isEqualTo(expectedIp);
     }
 
     // ------------------------------------------------------------------------

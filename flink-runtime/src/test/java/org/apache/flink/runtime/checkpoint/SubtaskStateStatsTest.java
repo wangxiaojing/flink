@@ -52,8 +52,7 @@ class SubtaskStateStatsTest {
                         Integer.MAX_VALUE + 6L,
                         Integer.MAX_VALUE + 7L,
                         false,
-                        true,
-                        "10.0.0.1");
+                        true);
 
         stats = serialize ? CommonTestUtils.createCopySerializable(stats) : stats;
 
@@ -64,7 +63,6 @@ class SubtaskStateStatsTest {
         assertThat(stats.getAsyncCheckpointDuration()).isEqualTo(Integer.MAX_VALUE + 4L);
         assertThat(stats.getAlignmentDuration()).isEqualTo(Integer.MAX_VALUE + 6L);
         assertThat(stats.getCheckpointStartDelay()).isEqualTo(Integer.MAX_VALUE + 7L);
-        assertThat(stats.getIp()).isEqualTo("10.0.0.1");
 
         // Check duration helper
         long ackTimestamp = stats.getAckTimestamp();

@@ -77,16 +77,10 @@ export class JobCheckpointsSubtaskComponent implements OnInit, OnChanges, OnDest
   public mapOfSubtask: Map<number, JobVertexSubTaskData> = new Map();
 
   public readonly sortAckTimestampFn = createSortFn(item => item.ack_timestamp);
-  public readonly sortIPAddressFn: NzTableSortFn<SubTaskCheckpointStatisticsItem> = (a, b) => {
-    const ipA = (a as CompletedSubTaskCheckpointStatistics).ip ?? '';
-    const ipB = (b as CompletedSubTaskCheckpointStatistics).ip ?? '';
-    const normalize = (ip: string): string =>
-      ip
-        .split('.')
-        .map(seg => seg.padStart(3, '0'))
-        .join('.');
-
-    return normalize(ipA) > normalize(ipB) ? 1 : normalize(ipA) < normalize(ipB) ? -1 : 0;
+  public readonly sortEndpointFn: NzTableSortFn<SubTaskCheckpointStatisticsItem> = (a, b) => {
+    const endpointA = this.mapOfSubtask.get(a['index'])?.endpoint ?? '';
+    const endpointB = this.mapOfSubtask.get(b['index'])?.endpoint ?? '';
+    return endpointA > endpointB ? 1 : endpointA < endpointB ? -1 : 0;
   };
   public readonly sortEndToEndDurationFn = createSortFn(item => item.end_to_end_duration);
   public readonly sortCheckpointedSizeFn = createSortFn(item => item.checkpointed_size);

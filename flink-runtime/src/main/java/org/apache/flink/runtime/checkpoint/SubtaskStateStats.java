@@ -66,10 +66,8 @@ public class SubtaskStateStats implements Serializable {
     /** Is the checkpoint completed by this subtask. */
     private final boolean completed;
 
-    private final String ip;
-
     SubtaskStateStats(int subtaskIndex, long ackTimestamp) {
-        this(subtaskIndex, ackTimestamp, 0, 0, 0, 0, 0, 0, 0, 0, false, true, null);
+        this(subtaskIndex, ackTimestamp, 0, 0, 0, 0, 0, 0, 0, 0, false, true);
     }
 
     SubtaskStateStats(
@@ -84,8 +82,8 @@ public class SubtaskStateStats implements Serializable {
             long alignmentDuration,
             long checkpointStartDelay,
             boolean unalignedCheckpoint,
-            boolean completed,
-            String ip) {
+            boolean completed) {
+
         checkArgument(subtaskIndex >= 0, "Negative subtask index");
         this.subtaskIndex = subtaskIndex;
         checkArgument(checkpointedSize >= 0, "Negative incremental state size");
@@ -101,7 +99,6 @@ public class SubtaskStateStats implements Serializable {
         this.checkpointStartDelay = checkpointStartDelay;
         this.unalignedCheckpoint = unalignedCheckpoint;
         this.completed = completed;
-        this.ip = ip;
     }
 
     public int getSubtaskIndex() {
@@ -196,9 +193,5 @@ public class SubtaskStateStats implements Serializable {
 
     public boolean isCompleted() {
         return completed;
-    }
-
-    public String getIp() {
-        return ip;
     }
 }
